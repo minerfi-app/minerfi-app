@@ -53,6 +53,135 @@
           z-index: -2;
       }
 
+      /* ========================================================
+         SPLASH / LOADING SCREEN ("INFLATION IS REAL")
+      ======================================================== */
+      #splash-screen {
+          position: fixed;
+          inset: 0;
+          z-index: 99999;
+          background: radial-gradient(circle at 50% 45%, #ffffff 0%, #f8fafc 65%, #f1f5f9 100%);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 24px 18px;
+          text-align: center;
+          transition: opacity 0.55s ease, visibility 0.55s ease;
+      }
+
+      #splash-screen.hide {
+          opacity: 0;
+          visibility: hidden;
+          pointer-events: none;
+      }
+
+      .splash-headline {
+          font-family: 'Outfit', sans-serif;
+          font-size: clamp(26px, 7.6vw, 40px);
+          font-weight: 900;
+          letter-spacing: 0.5px;
+          line-height: 1.08;
+          text-transform: uppercase;
+          margin-bottom: 8px;
+          animation: splashSlideDown 0.6s ease both;
+      }
+
+      .splash-green-text {
+          background: linear-gradient(180deg, #16a34a 0%, #0d7a3e 55%, #064e3b 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          filter: drop-shadow(0 2px 3px rgba(6, 78, 59, 0.18));
+      }
+
+      .splash-gold-text {
+          background: linear-gradient(180deg, #fde047 0%, #d97706 55%, #92400e 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          filter: drop-shadow(0 2px 3px rgba(146, 64, 14, 0.2));
+      }
+
+      .splash-sub {
+          font-size: clamp(9.5px, 2.8vw, 12.5px);
+          font-weight: 700;
+          letter-spacing: 1.8px;
+          color: #1e293b;
+          text-transform: uppercase;
+          margin-bottom: 10px;
+          animation: splashSlideDown 0.7s ease both;
+      }
+
+      .splash-divider {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          margin-bottom: 14px;
+      }
+      .splash-divider .line-green {
+          width: 72px;
+          height: 2px;
+          background: linear-gradient(90deg, transparent, #15803d);
+          border-radius: 2px;
+      }
+      .splash-divider .line-gold {
+          width: 72px;
+          height: 2px;
+          background: linear-gradient(90deg, #d97706, transparent);
+          border-radius: 2px;
+      }
+
+      .splash-artwork {
+          width: 100%;
+          max-width: 400px;
+          height: auto;
+          margin: 4px auto 22px;
+          animation: splashZoomIn 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+
+      .splash-loader-box {
+          width: 100%;
+          max-width: 260px;
+          margin-top: 4px;
+      }
+
+      .splash-progress-track {
+          width: 100%;
+          height: 8px;
+          background: #e2e8f0;
+          border-radius: 99px;
+          overflow: hidden;
+          box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.12);
+          border: 1px solid rgba(15, 23, 42, 0.06);
+      }
+
+      .splash-progress-fill {
+          width: 0%;
+          height: 100%;
+          background: linear-gradient(90deg, #16a34a 0%, #22c55e 45%, #f59e0b 100%);
+          border-radius: 99px;
+          transition: width 0.12s linear;
+          box-shadow: 0 0 10px rgba(34, 197, 94, 0.45);
+      }
+
+      .splash-status {
+          margin-top: 9px;
+          font-size: 11px;
+          font-weight: 800;
+          color: #475569;
+          letter-spacing: 0.6px;
+          text-transform: uppercase;
+      }
+
+      @keyframes splashSlideDown {
+          from { opacity: 0; transform: translateY(-12px); }
+          to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes splashZoomIn {
+          from { opacity: 0; transform: scale(0.92); }
+          to { opacity: 1; transform: scale(1); }
+      }
+
       #app {
           flex: 1;
           overflow-y: auto;
@@ -531,6 +660,189 @@
     </style>
   </head>
   <body>
+    <!-- ==========================================
+         SPLASH / LOADING SCREEN
+    ========================================== -->
+    <div id="splash-screen">
+      <h1 class="splash-headline">
+        <span class="splash-green-text">INFLATION</span> <span class="splash-gold-text">IS REAL</span>
+      </h1>
+      <p class="splash-sub">DON'T LET YOUR MONEY LOSE ITS VALUE.</p>
+      <div class="splash-divider">
+        <span class="line-green"></span>
+        <span class="line-gold"></span>
+      </div>
+
+      <svg class="splash-artwork" viewBox="0 0 420 225" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <!-- Gold Stack Coin Gradients -->
+          <linearGradient id="sp-stackSide" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#a16207" />
+            <stop offset="35%" stop-color="#facc15" />
+            <stop offset="70%" stop-color="#ca8a04" />
+            <stop offset="100%" stop-color="#713f12" />
+          </linearGradient>
+          <linearGradient id="sp-stackTop" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#fef08a" />
+            <stop offset="100%" stop-color="#d97706" />
+          </linearGradient>
+
+          <!-- Leaf Gradients -->
+          <linearGradient id="sp-leafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#4ade80" />
+            <stop offset="100%" stop-color="#15803d" />
+          </linearGradient>
+
+          <!-- Center Split Coin Gradients & Clips -->
+          <clipPath id="sp-clipLeft"><rect x="0" y="0" width="100" height="200" /></clipPath>
+          <clipPath id="sp-clipRight"><rect x="100" y="0" width="100" height="200" /></clipPath>
+          <linearGradient id="sp-greenRim" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#17945e" />
+            <stop offset="50%" stop-color="#0b6b42" />
+            <stop offset="100%" stop-color="#06452a" />
+          </linearGradient>
+          <linearGradient id="sp-goldRimCoin" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#fbd257" />
+            <stop offset="50%" stop-color="#d49c1a" />
+            <stop offset="100%" stop-color="#926308" />
+          </linearGradient>
+          <linearGradient id="sp-greenFace" x1="20%" y1="0%" x2="80%" y2="100%">
+            <stop offset="0%" stop-color="#0e7d4e" />
+            <stop offset="100%" stop-color="#075332" />
+          </linearGradient>
+          <linearGradient id="sp-goldFace" x1="20%" y1="0%" x2="80%" y2="100%">
+            <stop offset="0%" stop-color="#ecc03d" />
+            <stop offset="100%" stop-color="#c08a14" />
+          </linearGradient>
+          <linearGradient id="sp-symWhite" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ffffff" />
+            <stop offset="100%" stop-color="#dbe2ea" />
+          </linearGradient>
+          <linearGradient id="sp-symGold" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#e3b43b" />
+            <stop offset="100%" stop-color="#9f7010" />
+          </linearGradient>
+          <path id="sp-rimTextTop" d="M 19,100 A 81,81 0 0,1 181,100" />
+          <path id="sp-rimTextBottom" d="M 11,100 A 89,89 0 0,0 189,100" />
+        </defs>
+
+        <!-- Ground Soft Shadows -->
+        <ellipse cx="78" cy="202" rx="58" ry="8" fill="rgba(15,23,42,0.12)" />
+        <ellipse cx="210" cy="206" rx="70" ry="9" fill="rgba(15,23,42,0.18)" />
+        <ellipse cx="338" cy="202" rx="56" ry="8" fill="rgba(15,23,42,0.12)" />
+
+        <!-- Left Coin Stack & Sprouting Plant -->
+        <g>
+          <!-- Small background stack -->
+          <g transform="translate(36, 178)">
+            <path d="M0,12 A20,5 0 0,0 40,12 L40,18 A20,5 0 0,1 0,18 Z" fill="url(#sp-stackSide)" />
+            <ellipse cx="20" cy="12" rx="20" ry="5" fill="url(#sp-stackTop)" stroke="#b45309" stroke-width="0.6" />
+            <path d="M0,6 A20,5 0 0,0 40,6 L40,12 A20,5 0 0,1 0,12 Z" fill="url(#sp-stackSide)" />
+            <ellipse cx="20" cy="6" rx="20" ry="5" fill="url(#sp-stackTop)" stroke="#b45309" stroke-width="0.6" />
+          </g>
+          <!-- Main Left Coin Stack (6 coins) -->
+          <g transform="translate(56, 146)">
+            <path d="M0,45 A27,6.5 0 0,0 54,45 L54,51 A27,6.5 0 0,1 0,51 Z" fill="url(#sp-stackSide)" />
+            <ellipse cx="27" cy="45" rx="27" ry="6.5" fill="url(#sp-stackTop)" stroke="#b45309" stroke-width="0.6" />
+            <path d="M0,37 A27,6.5 0 0,0 54,37 L54,43 A27,6.5 0 0,1 0,43 Z" fill="url(#sp-stackSide)" />
+            <ellipse cx="27" cy="37" rx="27" ry="6.5" fill="url(#sp-stackTop)" stroke="#b45309" stroke-width="0.6" />
+            <path d="M0,29 A27,6.5 0 0,0 54,29 L54,35 A27,6.5 0 0,1 0,35 Z" fill="url(#sp-stackSide)" />
+            <ellipse cx="27" cy="29" rx="27" ry="6.5" fill="url(#sp-stackTop)" stroke="#b45309" stroke-width="0.6" />
+            <path d="M0,21 A27,6.5 0 0,0 54,21 L54,27 A27,6.5 0 0,1 0,27 Z" fill="url(#sp-stackSide)" />
+            <ellipse cx="27" cy="21" rx="27" ry="6.5" fill="url(#sp-stackTop)" stroke="#b45309" stroke-width="0.6" />
+            <path d="M0,13 A27,6.5 0 0,0 54,13 L54,19 A27,6.5 0 0,1 0,19 Z" fill="url(#sp-stackSide)" />
+            <ellipse cx="27" cy="13" rx="27" ry="6.5" fill="url(#sp-stackTop)" stroke="#b45309" stroke-width="0.6" />
+            <path d="M0,5 A27,6.5 0 0,0 54,5 L54,11 A27,6.5 0 0,1 0,11 Z" fill="url(#sp-stackSide)" />
+            <ellipse cx="27" cy="5" rx="27" ry="6.5" fill="url(#sp-stackTop)" stroke="#b45309" stroke-width="0.7" />
+          </g>
+          <!-- Green Plant Sprout (Left) -->
+          <g>
+            <path d="M 83,150 Q 82,118 85,84" fill="none" stroke="#15803d" stroke-width="3" stroke-linecap="round" />
+            <path d="M 83,128 Q 52,126 42,106 Q 68,104 83,124 Z" fill="url(#sp-leafGrad)" />
+            <path d="M 84,116 Q 112,110 120,88 Q 95,92 84,112 Z" fill="url(#sp-leafGrad)" />
+            <path d="M 84,102 Q 62,86 58,64 Q 80,74 84,98 Z" fill="#22c55e" />
+            <path d="M 85,86 Q 94,64 114,62 Q 106,82 85,86 Z" fill="#16a34a" />
+          </g>
+        </g>
+
+        <!-- Right Coin Stack & Sprout -->
+        <g>
+          <!-- Small extra coins -->
+          <g transform="translate(362, 182)">
+            <path d="M0,10 A18,4.5 0 0,0 36,10 L36,15 A18,4.5 0 0,1 0,15 Z" fill="url(#sp-stackSide)" />
+            <ellipse cx="18" cy="10" rx="18" ry="4.5" fill="url(#sp-stackTop)" stroke="#b45309" stroke-width="0.6" />
+            <path d="M0,4 A18,4.5 0 0,0 36,4 L36,9 A18,4.5 0 0,1 0,9 Z" fill="url(#sp-stackSide)" />
+            <ellipse cx="18" cy="4" rx="18" ry="4.5" fill="url(#sp-stackTop)" stroke="#b45309" stroke-width="0.6" />
+          </g>
+          <!-- Main Right Coin Stack (5 coins) -->
+          <g transform="translate(310, 155)">
+            <path d="M0,36 A26,6.2 0 0,0 52,36 L52,42 A26,6.2 0 0,1 0,42 Z" fill="url(#sp-stackSide)" />
+            <ellipse cx="26" cy="36" rx="26" ry="6.2" fill="url(#sp-stackTop)" stroke="#b45309" stroke-width="0.6" />
+            <path d="M0,28 A26,6.2 0 0,0 52,28 L52,34 A26,6.2 0 0,1 0,34 Z" fill="url(#sp-stackSide)" />
+            <ellipse cx="26" cy="28" rx="26" ry="6.2" fill="url(#sp-stackTop)" stroke="#b45309" stroke-width="0.6" />
+            <path d="M0,20 A26,6.2 0 0,0 52,20 L52,26 A26,6.2 0 0,1 0,26 Z" fill="url(#sp-stackSide)" />
+            <ellipse cx="26" cy="20" rx="26" ry="6.2" fill="url(#sp-stackTop)" stroke="#b45309" stroke-width="0.6" />
+            <path d="M0,12 A26,6.2 0 0,0 52,12 L52,18 A26,6.2 0 0,1 0,18 Z" fill="url(#sp-stackSide)" />
+            <ellipse cx="26" cy="12" rx="26" ry="6.2" fill="url(#sp-stackTop)" stroke="#b45309" stroke-width="0.6" />
+            <path d="M0,4 A26,6.2 0 0,0 52,4 L52,10 A26,6.2 0 0,1 0,10 Z" fill="url(#sp-stackSide)" />
+            <ellipse cx="26" cy="4" rx="26" ry="6.2" fill="url(#sp-stackTop)" stroke="#b45309" stroke-width="0.7" />
+          </g>
+          <!-- Green Sprout (Right) -->
+          <g>
+            <path d="M 336,158 Q 336,136 338,118" fill="none" stroke="#15803d" stroke-width="2.6" stroke-linecap="round" />
+            <path d="M 336,138 Q 312,130 308,114 Q 328,116 336,134 Z" fill="url(#sp-leafGrad)" />
+            <path d="M 337,128 Q 362,120 368,104 Q 348,106 337,124 Z" fill="#22c55e" />
+          </g>
+        </g>
+
+        <!-- Center Split Green & Gold Tether Coin -->
+        <g transform="translate(122, 26) scale(0.88)" filter="drop-shadow(0 12px 18px rgba(15,23,42,0.32))">
+          <circle cx="100" cy="100" r="97" fill="#0f172a" />
+          <circle cx="100" cy="100" r="95" fill="url(#sp-greenRim)" clip-path="url(#sp-clipLeft)" />
+          <circle cx="100" cy="100" r="95" fill="url(#sp-goldRimCoin)" clip-path="url(#sp-clipRight)" />
+          <circle cx="100" cy="100" r="74" fill="none" stroke="rgba(0,0,0,0.45)" stroke-width="2.5" />
+          <circle cx="100" cy="100" r="72" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1" />
+          <circle cx="100" cy="100" r="72" fill="url(#sp-greenFace)" clip-path="url(#sp-clipLeft)" />
+          <circle cx="100" cy="100" r="72" fill="url(#sp-goldFace)" clip-path="url(#sp-clipRight)" />
+          <line x1="100" y1="5" x2="100" y2="195" stroke="rgba(0,0,0,0.16)" stroke-width="1" />
+
+          <text fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="9.6" font-weight="800" letter-spacing="0.8">
+            <textPath href="#sp-rimTextTop" startOffset="50%" text-anchor="middle">IN GOD WE TRUST</textPath>
+          </text>
+          <text fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="9.6" font-weight="800" letter-spacing="0.8">
+            <textPath href="#sp-rimTextBottom" startOffset="23%" text-anchor="middle">IN GOD WE TRUST</textPath>
+          </text>
+          <text fill="#fef9c3" font-family="Inter, Arial, sans-serif" font-size="9.6" font-weight="800" letter-spacing="0.8">
+            <textPath href="#sp-rimTextBottom" startOffset="77%" text-anchor="middle">IN GOD WE TRUST</textPath>
+          </text>
+
+          <g>
+            <circle cx="29.5" cy="52.5" r="4.2" fill="#090d14" stroke="rgba(255,255,255,0.25)" stroke-width="1" />
+            <circle cx="170.5" cy="52.5" r="4.2" fill="#090d14" stroke="rgba(255,255,255,0.25)" stroke-width="1" />
+            <circle cx="100" cy="184.5" r="4.2" fill="#090d14" stroke="rgba(255,255,255,0.25)" stroke-width="1" />
+          </g>
+
+          <g clip-path="url(#sp-clipLeft)">
+            <path d="M 52,103 A 48,14 0 0,1 148,103 L 138,103 A 38,9 0 0,0 62,103 Z" fill="#e2e8f0" />
+            <path d="M 60,55 H 140 V 75 H 111 V 148 H 89 V 75 H 60 Z" fill="url(#sp-symWhite)" stroke="rgba(0,0,0,0.2)" stroke-width="1" />
+            <path d="M 52,103 A 48,14 0 0,0 148,103 L 138,103 A 38,9 0 0,1 62,103 Z" fill="#ffffff" stroke="rgba(0,0,0,0.18)" stroke-width="1" />
+          </g>
+          <g clip-path="url(#sp-clipRight)">
+            <path d="M 52,103 A 48,14 0 0,1 148,103 L 138,103 A 38,9 0 0,0 62,103 Z" fill="#b47e11" />
+            <path d="M 60,55 H 140 V 75 H 111 V 148 H 89 V 75 H 60 Z" fill="url(#sp-symGold)" stroke="rgba(75,45,0,0.45)" stroke-width="1.2" />
+            <path d="M 52,103 A 48,14 0 0,0 148,103 L 138,103 A 38,9 0 0,1 62,103 Z" fill="#dfb13b" stroke="rgba(75,45,0,0.4)" stroke-width="1.2" />
+          </g>
+        </g>
+      </svg>
+
+      <div class="splash-loader-box">
+        <div class="splash-progress-track">
+          <div class="splash-progress-fill" id="splash-progress-fill"></div>
+        </div>
+        <div class="splash-status" id="splash-status">Loading MinerFi... 0%</div>
+      </div>
+    </div>
+
     <div id="toast">Copied!</div>
 
     <div id="app">
@@ -873,6 +1185,33 @@
     </div>
 
     <script>
+      // ==========================================
+      // 0. SPLASH / LOADING SCREEN CONTROLLER
+      // ==========================================
+      (function startSplashScreen() {
+        const splash = document.getElementById("splash-screen");
+        const fill = document.getElementById("splash-progress-fill");
+        const status = document.getElementById("splash-status");
+        if (!splash || !fill || !status) return;
+
+        let progress = 0;
+        const timer = setInterval(() => {
+          progress += 4;
+          if (progress >= 100) {
+            progress = 100;
+            fill.style.width = "100%";
+            status.innerText = "MinerFi Ready • 100%";
+            clearInterval(timer);
+            setTimeout(() => {
+              splash.classList.add("hide");
+            }, 350);
+          } else {
+            fill.style.width = progress + "%";
+            status.innerText = "Loading MinerFi... " + progress + "%";
+          }
+        }, 85);
+      })();
+
       // ==========================================
       // 1. FIREBASE & BOT CONFIGURATION
       // ==========================================
