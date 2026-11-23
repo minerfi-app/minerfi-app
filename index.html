@@ -1731,7 +1731,7 @@
       function submitManualRef() {
         const rawInput = document.getElementById("input-inviter-id").value.trim().toUpperCase();
         if (!rawInput) return alert("Please enter an Inviter Referral Code!");
-        if (!/^[A-Z]+$/.test(rawInput)) return alert("Invalid code! Please enter letters only (e.g. BCDEFG).");
+        if (!/^[A-Z]+$/.test(rawInput)) return alert("Invalid code! Please enter letters only (e.g. XIIQZOJ).");
 
         const inviterId = decodeLettersToUid(rawInput);
         if (!inviterId) return alert("Invalid Inviter Code!");
